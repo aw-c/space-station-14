@@ -46,6 +46,6 @@
   - type: InstantAction
     icon: SS220/Interface/actions/CQCCombat/longsleep.png
     event: !type:CQCLongSleepEvent
-    useDelay: 60
+    useDelay: 40
     checkCanInteract: false
     priority: -10
