@@ -1,10 +1,13 @@
 // © SS220, An EULA/CLA with a hosting restriction, full text: https://raw.githubusercontent.com/SerbiaStrong-220/space-station-14/master/CLA.txt
 
 using Content.Shared.Weapons.Melee.Events;
+using Robust.Shared.Network;
 using Robust.Shared.Random;
 using Content.Shared.Popups;
-using Robust.Shared.Network;
 using Content.Shared.SS220.Damage;
+using Content.Shared.Mobs;
+using Content.Shared.Mobs.Components;
+
 
 namespace Content.Shared.SS220.Missable;
 
@@ -30,6 +33,10 @@ public sealed class MissableSharedSystem : EntitySystem
     {
         if (!HasComp<MissableComponent>(entity))
             return false;
+        if (TryComp<MobStateComponent>(entity, out var mobStateComp) && mobStateComp.CurrentState != MobState.Alive)
+        {
+            return false;
+        }
 
         var missEvent = new MissableCanMissEvent();
         RaiseLocalEvent(entity, missEvent);

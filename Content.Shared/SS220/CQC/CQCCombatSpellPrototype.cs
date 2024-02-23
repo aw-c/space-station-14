@@ -16,4 +16,6 @@ public sealed class CQCCombatSpellPrototype : IPrototype
     public string Entity = default!;
     [DataField]
     public readonly DamageSpecifier? Damage = default!;
+    [DataField]
+    public bool RestrictWarps = false;
 }

@@ -1,0 +1,14 @@
+- type: entity
+  parent: WarpPoint
+  id: WarpPointCooking
+  name: cooking cqc warp point
+  suffix: cooking cqc warp point activation
+  components:
+  - type: CQCCombatWarp
+  - type: WarpPoint
+    location: cooking
+  - type: Sprite
+    layers:
+    - state: pink
+    - sprite: SS220/Objects/Misc/books.rsi
+      state: cqc

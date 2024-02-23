@@ -3,7 +3,6 @@
 namespace Content.Shared.SS220.CQCCombat;
 
 [RegisterComponent]
-public sealed partial class CQCCombatInfosComponent : Component
+public sealed partial class CQCCombatWarpComponent : Component
 {
-    public string Prototype { get; set; } = default!;
 }

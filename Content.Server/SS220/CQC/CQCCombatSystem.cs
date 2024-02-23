@@ -1,21 +1,25 @@
 // © SS220, An EULA/CLA with a hosting restriction, full text: https://raw.githubusercontent.com/SerbiaStrong-220/space-station-14/master/CLA.txt
 
+using System.Diagnostics.CodeAnalysis;
+using Robust.Shared.Prototypes;
+using Robust.Shared.Random;
 using Content.Shared.Actions;
 using Content.Shared.Hands.Components;
 using Content.Shared.SS220.CQCCombat;
-using Content.Shared.SS220.UseableBook;
-using Robust.Shared.Prototypes;
 using Content.Shared.Damage;
-using Content.Server.Hands.Systems;
 using Content.Shared.Pulling.Components;
-using Content.Server.Bed.Sleep;
 using Content.Shared.StatusEffect;
 using Content.Shared.Bed.Sleep;
 using Content.Shared.Stunnable;
 using Content.Shared.Humanoid;
-using Robust.Shared.Random;
-using Content.Shared.Popups;
 using Content.Shared.Zombies;
+using Content.Shared.Cuffs.Components;
+using Content.Shared.Mobs;
+using Content.Shared.Mobs.Components;
+using Content.Shared.Popups;
+using Content.Server.Hands.Systems;
+using Content.Server.Bed.Sleep;
+using Content.Server.Cuffs;
 
 namespace Content.Server.SS220.CQCCombat;
 
@@ -28,13 +32,17 @@ public sealed class CQCCombatSystem : CQCCombatSharedSystem
     [Dependency] private readonly IPrototypeManager _prototypeManager = default!;
     [Dependency] private readonly DamageableSystem _damage = default!;
     [Dependency] private readonly HandsSystem _hands = default!;
+    [Dependency] private readonly CuffableSystem _cuffs = default!;
+    [Dependency] private readonly SharedPopupSystem _popup = default!;
+    [Dependency] private readonly IRobustRandom _random = default!;
     private const string StatusEffectKey = "ForcedSleep"; // Same one used by N2O and other sleep chems.
-    private const double SleepCooldown = 30;
+    private const double SleepCooldown = 15;
     private const double BlowbackParalyze = 4;
     public override void Initialize()
     {
         SubscribeLocalEvent<CQCCanReadBook>(CanReadCQCBook);
         SubscribeLocalEvent<CQCCombatComponent, ComponentInit>(OnComponentInit);
+        SubscribeLocalEvent<CQCCombatComponent, ComponentRemove>(OnComponentRemove);
         SubscribeLocalEvent<CQCCombatComponent, CQCBlowbackEvent>(BaseAction);
         SubscribeLocalEvent<CQCCombatComponent, CQCPunchEvent>(BaseAction);
         SubscribeLocalEvent<CQCCombatComponent, CQCDisarmEvent>(BaseAction);
@@ -66,6 +74,22 @@ public sealed class CQCCombatSystem : CQCCombatSharedSystem
         }
     }
 
+    //SS220 Shit code started
+    private void OnComponentRemove(EntityUid uid, CQCCombatComponent component, ComponentRemove args)
+    {
+        var actions = _actions.GetActions(uid);
+        foreach (var proto in component.AvailableSpells)
+        {
+            foreach (var (actionId, _) in actions)
+            {
+                if (TryComp<CQCCombatInfosComponent>(actionId, out var comp))
+                    if (comp.Prototype == proto.Id)
+                        _actions.RemoveAction(actionId);
+            }
+        }
+    }
+    //SS220 Shit code ended
+
     private EntityUid? GetTarget(EntityUid inflictor, BaseActionEvent args)
     {
         if (args is EntityTargetActionEvent actionEvent)
@@ -90,18 +114,48 @@ public sealed class CQCCombatSystem : CQCCombatSharedSystem
                 return spell;
         return null;
     }
+    private bool CanTargettingAction(EntityUid inflictor, EntityUid target, Type eventType, [NotNullWhen(false)] out string? reason)
+    {
+        reason = "";
+        if (TryComp<MobStateComponent>(inflictor, out var mobStateComp) && mobStateComp.CurrentState != MobState.Alive)
+        {
+            reason = "cqc-imnotalive"; //Я не могу использовать способности без сознания
+            return false;
+        }
+        if (HasComp<ZombieComponent>(inflictor))
+        {
+            reason = "cqc-imthezombie"; //Я зомби
+            return false;
+        }
+        if (eventType != typeof(CQCBlowbackEvent))
+            if (TryComp<CuffableComponent>(inflictor, out var cuffComp) && _cuffs.GetAllCuffs(cuffComp).Count > 0)
+            {
+                reason = "cqc-icantusemyspellsincuffs"; //Я не могу использовать способности в наручниках
+                return false;
+            }
+        if (!HasComp<HumanoidAppearanceComponent>(target))
+        {
+            reason = "cqc-icantattackthat"; //Я не могу атаковать это
+            return false;
+        }
+        if (HasComp<CQCCombatComponent>(target))
+        {
+            reason = "cqc-equaltarget"; //Наши силы равны
+            return false;
+        }
+        return true;
+    }
 
     private void BaseAction(EntityUid inflictor, CQCCombatComponent comp, BaseActionEvent args)
     {
-        if (HasComp<ZombieComponent>(inflictor))
+        if ((GetTarget(args.Performer, args) is { } target))
         {
-            args.Handled = true;
-            return;
-        }
-        if ((GetTarget(args.Performer, args) is { } target) && !HasComp<CQCCombatComponent>(target))
-        {
-            if (!HasComp<HumanoidAppearanceComponent>(target))
+            if (!CanTargettingAction(inflictor, target, args.GetType(), out var reason))
+            {
+                _popup.PopupEntity(Loc.GetString(reason), inflictor, inflictor);
                 return;
+            }
+
             switch (args)
             {
                 case CQCBlowbackEvent:
@@ -118,18 +172,24 @@ public sealed class CQCCombatSystem : CQCCombatSharedSystem
             args.Handled = true;
             ApplyDamage(target, GetSpell(args.ActionId)?.Damage);
 
+            _popup.PopupEntity(Loc.GetString("cqc-youwereattackebykaratist"), target, target);
+            _popup.PopupEntity(Loc.GetString(GetPhrase()), inflictor, inflictor);
+
             return;
         }
 
-        // Notify when there are no target
+        _popup.PopupEntity(Loc.GetString("cqc-therearenotarget"), inflictor, inflictor);
+    }
+
+    private string GetPhrase()
+    {
+        return "cqc-thereyougo" + _random.Next(0, 4);
     }
 
     private void ApplyDamage(EntityUid target, DamageSpecifier? damage)
     {
-        if (damage is null)
-            return;
-
-        _damage.TryChangeDamage(target, damage);
+        if (damage is not null)
+            _damage.TryChangeDamage(target, damage);
     }
 
     private void OnBlowback(EntityUid inflictor, EntityUid target)

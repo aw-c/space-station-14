@@ -75,7 +75,7 @@ public sealed class UseableBookSystem : EntitySystem
             return;
         }
         if (_net.IsServer)
-            _popupSystem.PopupEntity(reason, entity, type: PopupType.Medium);
+            _popupSystem.PopupEntity(reason, entity, entity, type: PopupType.Medium);
     }
 
     private void OnDoAfter(EntityUid uid, UseableBookComponent comp, UseableBookReadDoAfterEvent args)
@@ -95,7 +95,7 @@ public sealed class UseableBookSystem : EntitySystem
             _entManager.AddComponent(args.User, copiedComp, true);
         }
 
-        Dirty(comp);
+        Dirty(uid, comp);
         var useableArgs = new UseableBookOnReadEvent();
         useableArgs.Interactor = args.User;
         useableArgs.BookComp = comp;
