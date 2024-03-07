@@ -1,5 +1,6 @@
 // © SS220, An EULA/CLA with a hosting restriction, full text: https://raw.githubusercontent.com/SerbiaStrong-220/space-station-14/master/CLA.txt
 
+using System.Linq;
 using System.Diagnostics.CodeAnalysis;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Random;
@@ -73,22 +74,15 @@ public sealed class CQCCombatSystem : CQCCombatSharedSystem
             }
         }
     }
-
-    //SS220 Shit code started
     private void OnComponentRemove(EntityUid uid, CQCCombatComponent component, ComponentRemove args)
     {
         var actions = _actions.GetActions(uid);
-        foreach (var proto in component.AvailableSpells)
-        {
-            foreach (var (actionId, _) in actions)
-            {
-                if (TryComp<CQCCombatInfosComponent>(actionId, out var comp))
-                    if (comp.Prototype == proto.Id)
-                        _actions.RemoveAction(actionId);
-            }
-        }
+        var spellIds = component.AvailableSpells.Select(spell => spell.Id).ToHashSet();
+
+        foreach (var (actionId, _) in actions)
+            if (TryComp<CQCCombatInfosComponent>(actionId, out var comp) && spellIds.Contains(comp.Prototype))
+                _actions.RemoveAction(actionId);
     }
-    //SS220 Shit code ended
 
     private EntityUid? GetTarget(EntityUid inflictor, BaseActionEvent args)
     {
