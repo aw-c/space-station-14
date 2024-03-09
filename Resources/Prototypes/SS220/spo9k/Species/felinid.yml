@@ -10,8 +10,8 @@
   youngAge: 20
   oldAge: 40
   maxAge: 40
-  blockedJobs:
-    - Captain
+  blockedJobsByAccessor:
+    - Captain: [ female ]
     - BlueShield
     - HeadOfPersonnel
     - Quartermaster
@@ -27,6 +27,7 @@
     - SecurityOfficer
     - Warden
     - Boxer
+
 - type: markingPoints
   id: MobFelinidMarkingLimits
   points:
