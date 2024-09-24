@@ -22,8 +22,9 @@ namespace Content.Server.AWS.Economy
         [Dependency] private readonly PopupSystem _popupSystem = default!;
         public override void Initialize()
         {
-            SubscribeLocalEvent<EconomyBankATMComponent, GotEmaggedEvent>(OnEmagged);
             SubscribeLocalEvent<EconomyBankTerminalComponent, InteractUsingEvent>(OnTerminalInteracted);
+
+            SubscribeLocalEvent<EconomyBankATMComponent, GotEmaggedEvent>(OnEmagged);
             SubscribeLocalEvent<EconomyBankATMComponent, InteractUsingEvent>(OnATMInteracted);
         }
 
